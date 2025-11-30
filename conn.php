@@ -6,7 +6,7 @@ error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
 // Railway internal connection
-$host = getenv('RAILWAY_PRIVATE_DOMAIN') ?: 'mysql.railway.internal';
+$host = 'mysql.railway.internal';
 $port = 3306; // Internal port
 $user = 'root'; // MySQL username (from Railway plugin)
 $password = 'TGIZWAWItMMzmgxgRJozFHsTpWsZDbSt'; // MySQL password
