@@ -1,20 +1,20 @@
 <?php
 require_once 'conn.php';
 
-$sql = "SELECT * FROM restaurant";
+$sql = "SELECT * FROM test_users";  // updated table name
 $result = $conn->query($sql);
 
 if (!$result) {
     die("Query failed: " . $conn->error);
 }
 
-$restaurants = array();
+$users = array();  // variable for storing rows
 while ($row = $result->fetch_assoc()) {
-    $restaurants[] = $row;
+    $users[] = $row;
 }
 
 header('Content-Type: application/json');
-echo json_encode($restaurants);
+echo json_encode($users);
 
 $conn->close();
 ?>
