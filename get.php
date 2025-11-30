@@ -1,25 +1,20 @@
 <?php
-// Include the database connection
 require_once 'conn.php';
 
-// Query to fetch all restaurants
 $sql = "SELECT * FROM restaurant";
 $result = $conn->query($sql);
 
-$restaurants = array();
-
-if ($result) {
-    while ($row = $result->fetch_assoc()) {
-        $restaurants[] = $row;
-    }
+if (!$result) {
+    die("Query failed: " . $conn->error);
 }
 
-// Set header to JSON
-header('Content-Type: application/json');
+$restaurants = array();
+while ($row = $result->fetch_assoc()) {
+    $restaurants[] = $row;
+}
 
-// Output JSON
+header('Content-Type: application/json');
 echo json_encode($restaurants);
 
-// Close connection
 $conn->close();
 ?>
