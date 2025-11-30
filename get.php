@@ -1,6 +1,7 @@
 <?php
 require_once 'conn.php';
 
+
 $sql = "SELECT * FROM test_users";  // updated table name
 $result = $conn->query($sql);
 
