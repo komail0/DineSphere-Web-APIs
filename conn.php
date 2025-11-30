@@ -1,4 +1,3 @@
-
 ?>
 <?php
 // Enable error reporting
