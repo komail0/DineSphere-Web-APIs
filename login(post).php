@@ -7,14 +7,7 @@ $response = array();
 include 'conn.php';
 
 try {
-    // Only allow POST
-    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-        $response['success'] = false;
-        $response['message'] = 'Method not allowed. Use POST.';
-        http_response_code(405);
-        echo json_encode($response);
-        exit;
-    }
+   
 
     // Check database connection
     if (!isset($conn) || $conn->connect_error) {
