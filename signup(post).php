@@ -110,3 +110,4 @@ if ($stmt = $conn->prepare($insertSql)) {
 
 // Close connection (unreachable but safe)
 $conn->close();
+?>
