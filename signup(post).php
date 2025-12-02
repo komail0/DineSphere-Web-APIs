@@ -2,20 +2,38 @@
 // signup(post).php
 // Accepts POST data to create a new `restaurant` row.
 
-header('Content-Type: application/json');
+// CRITICAL: Disable error display and start output buffering BEFORE anything else
+ob_start();
+error_reporting(0);
+ini_set('display_errors', 0);
+
+header('Content-Type: application/json; charset=utf-8');
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: POST');
+header('Access-Control-Allow-Headers: Content-Type');
+
+// Clear any accidental output
+ob_clean();
 
 require_once 'conn.php';
 
 // Helper: send JSON response and exit
 function respond($status, $data = []) {
+    if (ob_get_length()) ob_clean();
     http_response_code($status);
-    echo json_encode($data);
+    echo json_encode($data, JSON_UNESCAPED_UNICODE);
+    ob_end_flush();
     exit;
 }
 
 // Only allow POST
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     respond(405, ['success' => false, 'message' => 'Method not allowed. Use POST.']);
+}
+
+// Check database connection
+if (!isset($conn) || $conn->connect_error) {
+    respond(500, ['success' => false, 'message' => 'Database connection failed']);
 }
 
 // Required fields
@@ -78,9 +96,8 @@ $insertSql = "INSERT INTO restaurant
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
 if ($stmt = $conn->prepare($insertSql)) {
-    // restaurant_location may be null -> bind as integer or null
+    // restaurant_location may be null
     if ($restaurant_location === null) {
-        // bind a null as integer: use a variable and pass null via mysqli_stmt::bind_param doesn't support null directly for integers
         $nullLoc = null;
         $stmt->bind_param('sssssssssis',
             $input['business_name'], $input['name_per_cnic'], $input['last_name'],
@@ -98,16 +115,16 @@ if ($stmt = $conn->prepare($insertSql)) {
     if ($stmt->execute()) {
         $newId = $stmt->insert_id;
         $stmt->close();
+        $conn->close();
         respond(201, ['success' => true, 'message' => 'Signup successful', 'restaurant_id' => $newId, 'otp' => $otp]);
     } else {
         $err = $stmt->error;
         $stmt->close();
+        $conn->close();
         respond(500, ['success' => false, 'message' => 'Insert failed', 'error' => $err]);
     }
 } else {
+    $conn->close();
     respond(500, ['success' => false, 'message' => 'DB error: failed to prepare insert']);
 }
-
-// Close connection (unreachable but safe)
-$conn->close();
 ?>
