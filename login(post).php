@@ -1,134 +1,116 @@
 <?php
-// login(post).php
-// Accepts POST data to authenticate a restaurant user.
-
-// Disable error display and enable error logging only
 error_reporting(0);
 ini_set('display_errors', 0);
+header('Content-Type: application/json');
 
-// Start output buffering to catch any accidental output
-ob_start();
+$response = array();
+include 'conn.php';
 
-// Set headers
-header('Content-Type: application/json; charset=utf-8');
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: POST');
-header('Access-Control-Allow-Headers: Content-Type');
-
-// Clear output buffer to remove any unwanted output
-ob_clean();
-
-// Helper: send JSON response and exit
-function respond($status, $data = []) {
-    // Clear any existing output
-    if (ob_get_length()) ob_clean();
-    
-    http_response_code($status);
-    echo json_encode($data, JSON_UNESCAPED_UNICODE);
-    
-    // Flush and end output buffering
-    ob_end_flush();
-    exit;
-}
-
-// Only allow POST
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    respond(405, ['success' => false, 'message' => 'Method not allowed. Use POST.']);
-}
-
-// Check if conn.php exists
-if (!file_exists('conn.php')) {
-    respond(500, ['success' => false, 'message' => 'Database connection file not found']);
-}
-
-// Include database connection
 try {
-    require_once 'conn.php';
+    // Only allow POST
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        $response['success'] = false;
+        $response['message'] = 'Method not allowed. Use POST.';
+        http_response_code(405);
+        echo json_encode($response);
+        exit;
+    }
+
+    // Check database connection
+    if (!isset($conn) || $conn->connect_error) {
+        $response['success'] = false;
+        $response['message'] = 'Database connection failed';
+        http_response_code(500);
+        echo json_encode($response);
+        exit;
+    }
+
+    // Get POST data
+    $identifier = isset($_POST['identifier']) ? trim($_POST['identifier']) : '';
+    $password = isset($_POST['password']) ? trim($_POST['password']) : '';
+
+    // Validate required fields
+    if (empty($identifier) || empty($password)) {
+        $response['success'] = false;
+        $response['message'] = 'Identifier and password are required';
+        http_response_code(400);
+        echo json_encode($response);
+        exit;
+    }
+
+    // Check if identifier is email or business name
+    $isEmail = filter_var($identifier, FILTER_VALIDATE_EMAIL);
+
+    // Prepare SQL query
+    if ($isEmail) {
+        $sql = "SELECT restaurant_id, business_name, name_per_cnic, last_name, business_type, 
+                       business_category, business_update, email, phone, password_hash, 
+                       restaurant_location, is_verified 
+                FROM restaurant 
+                WHERE email = ? 
+                LIMIT 1";
+    } else {
+        $sql = "SELECT restaurant_id, business_name, name_per_cnic, last_name, business_type, 
+                       business_category, business_update, email, phone, password_hash, 
+                       restaurant_location, is_verified 
+                FROM restaurant 
+                WHERE business_name = ? 
+                LIMIT 1";
+    }
+
+    $stmt = $conn->prepare($sql);
+    
+    if (!$stmt) {
+        $response['success'] = false;
+        $response['message'] = 'Database query failed';
+        http_response_code(500);
+        echo json_encode($response);
+        exit;
+    }
+
+    $stmt->bind_param('s', $identifier);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    if ($result->num_rows === 0) {
+        $stmt->close();
+        $conn->close();
+        $response['success'] = false;
+        $response['message'] = 'Invalid credentials';
+        http_response_code(401);
+        echo json_encode($response);
+        exit;
+    }
+
+    $user = $result->fetch_assoc();
+    $stmt->close();
+
+    // Verify password
+    if (!password_verify($password, $user['password_hash'])) {
+        $conn->close();
+        $response['success'] = false;
+        $response['message'] = 'Invalid credentials';
+        http_response_code(401);
+        echo json_encode($response);
+        exit;
+    }
+
+    // Remove sensitive data
+    unset($user['password_hash']);
+
+    $conn->close();
+
+    // Success response
+    $response['success'] = true;
+    $response['message'] = 'Login successful';
+    $response['user'] = $user;
+    http_response_code(200);
+    echo json_encode($response);
+
 } catch (Exception $e) {
-    respond(500, ['success' => false, 'message' => 'Failed to load database connection']);
+    $response['success'] = false;
+    $response['message'] = 'Server error: ' . $e->getMessage();
+    http_response_code(500);
+    echo json_encode($response);
 }
-
-// Check database connection
-if (!isset($conn)) {
-    respond(500, ['success' => false, 'message' => 'Database connection not initialized']);
-}
-
-if ($conn->connect_error) {
-    respond(500, ['success' => false, 'message' => 'Database connection failed']);
-}
-
-// Required fields
-if (!isset($_POST['identifier']) || !isset($_POST['password'])) {
-    respond(400, ['success' => false, 'message' => 'Missing required fields: identifier and password']);
-}
-
-if (empty($_POST['identifier']) || empty($_POST['password'])) {
-    respond(400, ['success' => false, 'message' => 'Identifier and password cannot be empty']);
-}
-
-$identifier = trim($_POST['identifier']);
-$password = trim($_POST['password']);
-
-// Check if identifier is email or business name
-$isEmail = filter_var($identifier, FILTER_VALIDATE_EMAIL);
-
-// Prepare SQL query based on identifier type
-if ($isEmail) {
-    $sql = "SELECT restaurant_id, business_name, name_per_cnic, last_name, business_type, 
-                   business_category, business_update, email, phone, password_hash, 
-                   restaurant_location, is_verified 
-            FROM restaurant 
-            WHERE email = ? 
-            LIMIT 1";
-} else {
-    $sql = "SELECT restaurant_id, business_name, name_per_cnic, last_name, business_type, 
-                   business_category, business_update, email, phone, password_hash, 
-                   restaurant_location, is_verified 
-            FROM restaurant 
-            WHERE business_name = ? 
-            LIMIT 1";
-}
-
-$stmt = $conn->prepare($sql);
-
-if (!$stmt) {
-    respond(500, ['success' => false, 'message' => 'Failed to prepare database query']);
-}
-
-$stmt->bind_param('s', $identifier);
-
-if (!$stmt->execute()) {
-    $stmt->close();
-    respond(500, ['success' => false, 'message' => 'Failed to execute query']);
-}
-
-$result = $stmt->get_result();
-
-if ($result->num_rows === 0) {
-    $stmt->close();
-    $conn->close();
-    respond(401, ['success' => false, 'message' => 'Invalid credentials']);
-}
-
-$user = $result->fetch_assoc();
-$stmt->close();
-
-// Verify password
-if (!password_verify($password, $user['password_hash'])) {
-    $conn->close();
-    respond(401, ['success' => false, 'message' => 'Invalid credentials']);
-}
-
-// Remove password_hash from response
-unset($user['password_hash']);
-
-// Close connection
-$conn->close();
-
-// Successful login
-respond(200, [
-    'success' => true, 
-    'message' => 'Login successful',
-    'user' => $user
-]);
 ?>

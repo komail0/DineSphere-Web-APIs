@@ -1,130 +1,155 @@
 <?php
-// signup(post).php
-// Accepts POST data to create a new `restaurant` row.
-
-// CRITICAL: Disable error display and start output buffering BEFORE anything else
-ob_start();
 error_reporting(0);
 ini_set('display_errors', 0);
+header('Content-Type: application/json');
 
-header('Content-Type: application/json; charset=utf-8');
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: POST');
-header('Access-Control-Allow-Headers: Content-Type');
+$response = array();
+include 'conn.php';
 
-// Clear any accidental output
-ob_clean();
-
-require_once 'conn.php';
-
-// Helper: send JSON response and exit
-function respond($status, $data = []) {
-    if (ob_get_length()) ob_clean();
-    http_response_code($status);
-    echo json_encode($data, JSON_UNESCAPED_UNICODE);
-    ob_end_flush();
-    exit;
-}
-
-// Only allow POST
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    respond(405, ['success' => false, 'message' => 'Method not allowed. Use POST.']);
-}
-
-// Check database connection
-if (!isset($conn) || $conn->connect_error) {
-    respond(500, ['success' => false, 'message' => 'Database connection failed']);
-}
-
-// Required fields
-$required = [
-    'business_name', 'name_per_cnic', 'last_name',
-    'business_type', 'business_category', 'business_update',
-    'email', 'phone', 'password'
-];
-
-$input = [];
-foreach ($required as $field) {
-    if (empty($_POST[$field]) && $_POST[$field] !== '0') {
-        respond(400, ['success' => false, 'message' => "Missing required field: $field"]);
+try {
+    // Only allow POST
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        $response['success'] = false;
+        $response['message'] = 'Method not allowed. Use POST.';
+        http_response_code(405);
+        echo json_encode($response);
+        exit;
     }
-    $input[$field] = trim($_POST[$field]);
-}
 
-// Optional fields
-$restaurant_location = isset($_POST['restaurant_location']) && $_POST['restaurant_location'] !== ''
-    ? (int) $_POST['restaurant_location'] : null;
+    // Check database connection
+    if (!isset($conn) || $conn->connect_error) {
+        $response['success'] = false;
+        $response['message'] = 'Database connection failed';
+        http_response_code(500);
+        echo json_encode($response);
+        exit;
+    }
 
-// Validate email
-if (!filter_var($input['email'], FILTER_VALIDATE_EMAIL)) {
-    respond(400, ['success' => false, 'message' => 'Invalid email address']);
-}
+    // Get POST data
+    $businessName = isset($_POST['business_name']) ? trim($_POST['business_name']) : '';
+    $nameCnic = isset($_POST['name_per_cnic']) ? trim($_POST['name_per_cnic']) : '';
+    $lastName = isset($_POST['last_name']) ? trim($_POST['last_name']) : '';
+    $businessType = isset($_POST['business_type']) ? trim($_POST['business_type']) : '';
+    $businessCategory = isset($_POST['business_category']) ? trim($_POST['business_category']) : '';
+    $businessUpdate = isset($_POST['business_update']) ? trim($_POST['business_update']) : '';
+    $email = isset($_POST['email']) ? trim($_POST['email']) : '';
+    $phone = isset($_POST['phone']) ? trim($_POST['phone']) : '';
+    $password = isset($_POST['password']) ? trim($_POST['password']) : '';
+    $restaurantLocation = isset($_POST['restaurant_location']) && $_POST['restaurant_location'] !== '' 
+        ? (int)$_POST['restaurant_location'] : null;
 
-// Basic phone validation (digits, + and - allowed)
-$phoneClean = preg_replace('/[^0-9+\-]/', '', $input['phone']);
-if (strlen($phoneClean) < 7) {
-    respond(400, ['success' => false, 'message' => 'Invalid phone number']);
-}
-$input['phone'] = $phoneClean;
+    // Validate required fields
+    if (empty($businessName) || empty($nameCnic) || empty($lastName) || 
+        empty($businessType) || empty($businessCategory) || empty($businessUpdate) ||
+        empty($email) || empty($phone) || empty($password)) {
+        $response['success'] = false;
+        $response['message'] = 'All required fields must be filled';
+        http_response_code(400);
+        echo json_encode($response);
+        exit;
+    }
 
-// Password hashing
-$passwordHash = password_hash($input['password'], PASSWORD_DEFAULT);
-if ($passwordHash === false) {
-    respond(500, ['success' => false, 'message' => 'Password hashing failed']);
-}
+    // Validate email
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $response['success'] = false;
+        $response['message'] = 'Invalid email address';
+        http_response_code(400);
+        echo json_encode($response);
+        exit;
+    }
 
-// Check uniqueness of email and phone
-$checkSql = "SELECT restaurant_id FROM restaurant WHERE email = ? OR phone = ? LIMIT 1";
-if ($stmt = $conn->prepare($checkSql)) {
-    $stmt->bind_param('ss', $input['email'], $input['phone']);
+    // Validate phone
+    $phoneClean = preg_replace('/[^0-9+\-]/', '', $phone);
+    if (strlen($phoneClean) < 7) {
+        $response['success'] = false;
+        $response['message'] = 'Invalid phone number';
+        http_response_code(400);
+        echo json_encode($response);
+        exit;
+    }
+
+    // Hash password
+    $passwordHash = password_hash($password, PASSWORD_DEFAULT);
+
+    // Check if email or phone already exists
+    $checkSql = "SELECT restaurant_id FROM restaurant WHERE email = ? OR phone = ? LIMIT 1";
+    $stmt = $conn->prepare($checkSql);
+    
+    if (!$stmt) {
+        $response['success'] = false;
+        $response['message'] = 'Database error';
+        http_response_code(500);
+        echo json_encode($response);
+        exit;
+    }
+
+    $stmt->bind_param('ss', $email, $phoneClean);
     $stmt->execute();
     $stmt->store_result();
+
     if ($stmt->num_rows > 0) {
         $stmt->close();
-        respond(409, ['success' => false, 'message' => 'Email or phone already registered']);
+        $conn->close();
+        $response['success'] = false;
+        $response['message'] = 'Email or phone already registered';
+        http_response_code(409);
+        echo json_encode($response);
+        exit;
     }
     $stmt->close();
-} else {
-    respond(500, ['success' => false, 'message' => 'DB error: failed to prepare uniqueness check']);
-}
 
-// Generate OTP (optional) and insert
-$otp = random_int(100000, 999999);
+    // Generate OTP
+    $otp = rand(100000, 999999);
 
-$insertSql = "INSERT INTO restaurant
-    (business_name, name_per_cnic, last_name, business_type, business_category, business_update, email, phone, password_hash, restaurant_location, otp)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+    // Insert new restaurant
+    $insertSql = "INSERT INTO restaurant (business_name, name_per_cnic, last_name, business_type, 
+                  business_category, business_update, email, phone, password_hash, 
+                  restaurant_location, otp) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+    
+    $stmt = $conn->prepare($insertSql);
+    
+    if (!$stmt) {
+        $response['success'] = false;
+        $response['message'] = 'Database error';
+        http_response_code(500);
+        echo json_encode($response);
+        exit;
+    }
 
-if ($stmt = $conn->prepare($insertSql)) {
-    // restaurant_location may be null
-    if ($restaurant_location === null) {
-        $nullLoc = null;
-        $stmt->bind_param('sssssssssis',
-            $input['business_name'], $input['name_per_cnic'], $input['last_name'],
-            $input['business_type'], $input['business_category'], $input['business_update'],
-            $input['email'], $input['phone'], $passwordHash, $nullLoc, $otp
-        );
+    if ($restaurantLocation === null) {
+        $stmt->bind_param('sssssssssis', $businessName, $nameCnic, $lastName, 
+                         $businessType, $businessCategory, $businessUpdate, 
+                         $email, $phoneClean, $passwordHash, $restaurantLocation, $otp);
     } else {
-        $stmt->bind_param('ssssssssiis',
-            $input['business_name'], $input['name_per_cnic'], $input['last_name'],
-            $input['business_type'], $input['business_category'], $input['business_update'],
-            $input['email'], $input['phone'], $passwordHash, $restaurant_location, $otp
-        );
+        $stmt->bind_param('ssssssssiis', $businessName, $nameCnic, $lastName, 
+                         $businessType, $businessCategory, $businessUpdate, 
+                         $email, $phoneClean, $passwordHash, $restaurantLocation, $otp);
     }
 
     if ($stmt->execute()) {
         $newId = $stmt->insert_id;
         $stmt->close();
         $conn->close();
-        respond(201, ['success' => true, 'message' => 'Signup successful', 'restaurant_id' => $newId, 'otp' => $otp]);
+
+        $response['success'] = true;
+        $response['message'] = 'Signup successful';
+        $response['restaurant_id'] = $newId;
+        $response['otp'] = $otp;
+        http_response_code(201);
+        echo json_encode($response);
     } else {
-        $err = $stmt->error;
         $stmt->close();
         $conn->close();
-        respond(500, ['success' => false, 'message' => 'Insert failed', 'error' => $err]);
+        $response['success'] = false;
+        $response['message'] = 'Failed to create account';
+        http_response_code(500);
+        echo json_encode($response);
     }
-} else {
-    $conn->close();
-    respond(500, ['success' => false, 'message' => 'DB error: failed to prepare insert']);
+
+} catch (Exception $e) {
+    $response['success'] = false;
+    $response['message'] = 'Server error: ' . $e->getMessage();
+    http_response_code(500);
+    echo json_encode($response);
 }
 ?>
