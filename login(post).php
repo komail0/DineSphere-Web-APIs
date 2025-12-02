@@ -2,12 +2,13 @@
 // login(post).php
 // Accepts POST data to authenticate a restaurant user.
 
-// Disable error display and enable error logging only
-error_reporting(0);
+ob_start();                  
+error_reporting(0);          
 ini_set('display_errors', 0);
+header('Content-Type: application/json; charset=utf-8');
 
-// Start output buffering to catch any accidental output
-ob_start();
+
+
 
 // Set headers
 header('Content-Type: application/json; charset=utf-8');
