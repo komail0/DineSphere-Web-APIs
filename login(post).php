@@ -7,7 +7,6 @@ $response = array();
 include 'conn.php';
 
 try {
-   
 
     // Check database connection
     if (!isset($conn) || $conn->connect_error) {
@@ -38,14 +37,14 @@ try {
     if ($isEmail) {
         $sql = "SELECT restaurant_id, business_name, name_per_cnic, last_name, business_type, 
                        business_category, business_update, email, phone, password_hash, 
-                       restaurant_location, is_verified 
+                       restaurant_location 
                 FROM restaurant 
                 WHERE email = ? 
                 LIMIT 1";
     } else {
         $sql = "SELECT restaurant_id, business_name, name_per_cnic, last_name, business_type, 
                        business_category, business_update, email, phone, password_hash, 
-                       restaurant_location, is_verified 
+                       restaurant_location 
                 FROM restaurant 
                 WHERE business_name = ? 
                 LIMIT 1";
