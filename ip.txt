@@ -1,1 +1,1 @@
-dinesphere-web-apis-production.up.railway.app
+https://dinesphere-web-apis-production.up.railway.app/
