@@ -1,18 +1,15 @@
 {
     "sqltools.connections": [
         {
-            "mysqlOptions": {
-                "authProtocol": "default",
-                "enableSsl": "Disabled"
-            },
-            "ssh": "Disabled",
             "previewLimit": 50,
             "server": "turntable.proxy.rlwy.net",
             "port": 58937,
             "driver": "MySQL",
             "name": "DineSphere",
             "database": "railway",
-            "username": "root"
+            "username": "root",
+            "password": "TGIZWAWItMMzmgxgRJozFHsTpWsZDbSt",
+            "connectionTimeout": 30
         }
     ]
 }
