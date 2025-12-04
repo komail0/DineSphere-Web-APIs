@@ -1,82 +1,87 @@
 <?php
 header("Content-Type: application/json");
-error_reporting(0);
-ini_set('display_errors', 0);
+require_once "conn.php";
+require_once "upload_image.php";
 
-$response = [];
+// Enable error reporting for debugging
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
 
-include 'conn.php';
-
-// ⛔ If DB failed silently in conn.php
 if (!$conn) {
-    $response['success'] = false;
-    $response['message'] = "Database connection error";
-    echo json_encode($response);
-    exit;
+    echo json_encode(["status" => "error", "message" => "Database connection failed"]);
+    exit();
 }
 
-// Allow only POST
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    $response['success'] = false;
-    $response['message'] = "Method not allowed. Use POST.";
-    echo json_encode($response);
-    exit;
+// Get POST data
+$restaurant_id = isset($_POST['restaurant_id']) ? intval($_POST['restaurant_id']) : 0;
+$category_name = isset($_POST['category_name']) ? trim($_POST['category_name']) : '';
+$base64_image = isset($_POST['base64_image']) ? $_POST['base64_image'] : '';
+
+// Validate required fields
+if ($restaurant_id <= 0) {
+    echo json_encode(["status" => "error", "message" => "Valid restaurant_id is required"]);
+    exit();
 }
 
-// Collect POST data
-$restaurantId = isset($_POST['restaurant_id']) ? intval($_POST['restaurant_id']) : 0;
-$categoryName = isset($_POST['category_name']) ? trim($_POST['category_name']) : "";
-$categoryImage = isset($_POST['category_image']) ? trim($_POST['category_image']) : ""; // Cloudinary URL
-
-// Validate
-if ($restaurantId <= 0 || empty($categoryName) || empty($categoryImage)) {
-    $response['success'] = false;
-    $response['message'] = "restaurant_id, category_name and category_image are required.";
-    echo json_encode($response);
-    exit;
+if (empty($category_name)) {
+    echo json_encode(["status" => "error", "message" => "Category name is required"]);
+    exit();
 }
 
-// Check if restaurant exists
-$check = $conn->prepare("SELECT restaurant_id FROM restaurant WHERE restaurant_id = ? LIMIT 1");
-$check->bind_param("i", $restaurantId);
-$check->execute();
-$check->store_result();
-
-if ($check->num_rows === 0) {
-    $check->close();
-    $response['success'] = false;
-    $response['message'] = "Invalid restaurant_id";
-    echo json_encode($response);
-    exit;
+if (empty($base64_image)) {
+    echo json_encode(["status" => "error", "message" => "Category image is required"]);
+    exit();
 }
-$check->close();
 
-// Insert category
-$sql = "INSERT INTO category (restaurant_id, category_name, category_image)
+// Verify restaurant exists
+$checkRestaurant = "SELECT restaurant_id FROM restaurants WHERE restaurant_id = $restaurant_id";
+$result = $conn->query($checkRestaurant);
+
+if ($result->num_rows === 0) {
+    echo json_encode(["status" => "error", "message" => "Restaurant not found"]);
+    exit();
+}
+
+// Upload image to Cloudinary
+$uploadResult = uploadBase64ImageToCloudinary($base64_image, 'dinesphere/categories');
+
+if (!$uploadResult['success']) {
+    echo json_encode([
+        "status" => "error", 
+        "message" => "Image upload failed: " . $uploadResult['message']
+    ]);
+    exit();
+}
+
+$imageUrl = $uploadResult['url'];
+
+// Insert category into database
+$sql = "INSERT INTO category (category_name, category_image, restaurant_id) 
         VALUES (?, ?, ?)";
 
 $stmt = $conn->prepare($sql);
-
-if (!$stmt) {
-    $response['success'] = false;
-    $response['message'] = "Database error";
-    echo json_encode($response);
-    exit;
-}
-
-$stmt->bind_param("iss", $restaurantId, $categoryName, $categoryImage);
+$stmt->bind_param("ssi", $category_name, $imageUrl, $restaurant_id);
 
 if ($stmt->execute()) {
-    $response['success'] = true;
-    $response['message'] = "Category created successfully";
-    $response['category_id'] = $stmt->insert_id;
+    $category_id = $stmt->insert_id;
+    
+    echo json_encode([
+        "status" => "success",
+        "message" => "Category added successfully",
+        "data" => [
+            "category_id" => $category_id,
+            "category_name" => $category_name,
+            "category_image" => $imageUrl,
+            "restaurant_id" => $restaurant_id
+        ]
+    ]);
 } else {
-    $response['success'] = false;
-    $response['message'] = "Failed to create category";
+    echo json_encode([
+        "status" => "error",
+        "message" => "Failed to add category: " . $stmt->error
+    ]);
 }
 
 $stmt->close();
 $conn->close();
-
-echo json_encode($response);
 ?>
