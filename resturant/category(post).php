@@ -1,11 +1,14 @@
 <?php
 header("Content-Type: application/json");
-require_once "conn.php";
-require_once "upload_image.php";
 
-// Enable error reporting for debugging
+// Enable error reporting BEFORE requiring files
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
+ini_set('log_errors', 1);
+ini_set('error_log', __DIR__ . '/category_errors.log');
+
+require_once "conn.php";
+require_once "upload_image.php";
 
 if (!$conn) {
     echo json_encode(["status" => "error", "message" => "Database connection failed"]);
