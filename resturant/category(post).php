@@ -28,7 +28,7 @@ try {
     }
 
     // Verify restaurant
-    $stmt = $conn->prepare("SELECT restaurant_id FROM restaurants WHERE restaurant_id = ?");
+    $stmt = $conn->prepare("SELECT restaurant_id FROM restaurant WHERE restaurant_id = ?");
     $stmt->bind_param("i", $restaurant_id);
     $stmt->execute();
     $result = $stmt->get_result();
