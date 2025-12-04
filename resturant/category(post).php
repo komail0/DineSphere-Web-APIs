@@ -1,14 +1,33 @@
 <?php
 header("Content-Type: application/json");
 
-// Enable error reporting BEFORE requiring files
+// Enable error reporting and catch all errors
 error_reporting(E_ALL);
-ini_set('display_errors', 1);
+ini_set('display_errors', 0);
 ini_set('log_errors', 1);
 ini_set('error_log', __DIR__ . '/category_errors.log');
 
-require_once "conn.php";
-require_once "upload_image.php";
+// Catch fatal errors
+register_shutdown_function(function() {
+    $error = error_get_last();
+    if ($error && in_array($error['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR])) {
+        http_response_code(500);
+        echo json_encode([
+            "status" => "error",
+            "message" => "Fatal error: " . $error['message'],
+            "file" => $error['file'],
+            "line" => $error['line']
+        ]);
+    }
+});
+
+try {
+    require_once "conn.php";
+    require_once "upload_image.php";
+} catch (Exception $e) {
+    echo json_encode(["status" => "error", "message" => "Include error: " . $e->getMessage()]);
+    exit();
+}
 
 if (!$conn) {
     echo json_encode(["status" => "error", "message" => "Database connection failed"]);
