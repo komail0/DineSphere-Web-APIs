@@ -66,16 +66,16 @@ try {
     $userLng = floatval($userRow['longitude']);
     $userStmt->close();
 
-    // Get saved restaurants
+    // Get saved restaurants with proper NULL handling
     $sql = "SELECT r.restaurant_id, r.business_name, r.address, r.latitude, r.longitude, 
                    r.restaurant_image, r.discount, r.rating,
-                   (6371 * acos(cos(radians(?)) * cos(radians(r.latitude)) * 
+                   COALESCE((6371 * acos(cos(radians(?)) * cos(radians(r.latitude)) * 
                    cos(radians(r.longitude) - radians(?)) + 
-                   sin(radians(?)) * sin(radians(r.latitude)))) AS distance_km
+                   sin(radians(?)) * sin(radians(r.latitude)))), 0) AS distance_km
             FROM saved_restaurants sr
             INNER JOIN restaurants r ON sr.restaurant_id = r.restaurant_id
             WHERE sr.user_id = ?
-            ORDER BY sr.saved_at DESC";
+            ORDER BY sr.id DESC";
     
     $stmt = $conn->prepare($sql);
     
