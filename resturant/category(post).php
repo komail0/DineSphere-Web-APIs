@@ -74,9 +74,21 @@ try {
     $uploadResult = uploadBase64ImageToCloudinary($base64_image, 'dinesphere/categories');
 
     if (!$uploadResult['success']) {
+        http_response_code(400);
         echo json_encode([
             "status" => "error", 
-            "message" => "Image upload failed: " . $uploadResult['message']
+            "message" => "Image upload failed: " . ($uploadResult['message'] ?? 'Unknown error'),
+            "upload_result" => $uploadResult
+        ]);
+        exit();
+    }
+
+    if (empty($uploadResult['url'])) {
+        http_response_code(500);
+        echo json_encode([
+            "status" => "error",
+            "message" => "Upload succeeded but no URL returned",
+            "upload_result" => $uploadResult
         ]);
         exit();
     }
