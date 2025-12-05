@@ -66,14 +66,14 @@ try {
     $userLng = floatval($userRow['longitude']);
     $userStmt->close();
 
-    // Get saved restaurants
+    // Get saved restaurants with proper table name 'restaurants'
     $sql = "SELECT r.restaurant_id, r.business_name, r.address, r.latitude, r.longitude, 
-                   r.restaurant_image, r.discount, r.rating,
+                   r.image_url, r.discount, r.rating,
                    (6371 * acos(cos(radians(?)) * cos(radians(r.latitude)) * 
                    cos(radians(r.longitude) - radians(?)) + 
                    sin(radians(?)) * sin(radians(r.latitude)))) AS distance_km
             FROM saved_restaurants sr
-            INNER JOIN restaurant r ON sr.restaurant_id = r.restaurant_id
+            INNER JOIN restaurants r ON sr.restaurant_id = r.restaurant_id
             WHERE sr.user_id = ?
             ORDER BY sr.saved_at DESC";
     
@@ -100,7 +100,7 @@ try {
             'address' => $row['address'],
             'latitude' => floatval($row['latitude']),
             'longitude' => floatval($row['longitude']),
-            'restaurant_image' => $row['restaurant_image'],
+            'restaurant_image' => $row['image_url'], // Changed from restaurant_image to image_url
             'discount' => $row['discount'],
             'rating' => floatval($row['rating']),
             'distance_km' => round(floatval($row['distance_km']), 2)
