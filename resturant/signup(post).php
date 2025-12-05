@@ -35,8 +35,6 @@ try {
     $email = isset($_POST['email']) ? trim($_POST['email']) : '';
     $phone = isset($_POST['phone']) ? trim($_POST['phone']) : '';
     $password = isset($_POST['password']) ? trim($_POST['password']) : '';
-    $restaurantLocation = isset($_POST['restaurant_location']) && $_POST['restaurant_location'] !== '' 
-        ? (int)$_POST['restaurant_location'] : null;
 
     // Validate required fields
     if (empty($businessName) || empty($nameCnic) || empty($lastName) || 
@@ -101,10 +99,10 @@ try {
     // Generate OTP
     $otp = rand(100000, 999999);
 
-    // Insert new restaurant
+    // Insert new restaurant (without restaurant_location)
     $insertSql = "INSERT INTO restaurant (business_name, name_per_cnic, last_name, business_type, 
-                  business_category, business_update, email, phone, password_hash, 
-                  restaurant_location, otp) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                  business_category, business_update, email, phone, password_hash, otp) 
+                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
     
     $stmt = $conn->prepare($insertSql);
     
@@ -116,15 +114,9 @@ try {
         exit;
     }
 
-    if ($restaurantLocation === null) {
-        $stmt->bind_param('sssssssssis', $businessName, $nameCnic, $lastName, 
-                         $businessType, $businessCategory, $businessUpdate, 
-                         $email, $phoneClean, $passwordHash, $restaurantLocation, $otp);
-    } else {
-        $stmt->bind_param('ssssssssiis', $businessName, $nameCnic, $lastName, 
-                         $businessType, $businessCategory, $businessUpdate, 
-                         $email, $phoneClean, $passwordHash, $restaurantLocation, $otp);
-    }
+    $stmt->bind_param('sssssssssi', $businessName, $nameCnic, $lastName, 
+                     $businessType, $businessCategory, $businessUpdate, 
+                     $email, $phoneClean, $passwordHash, $otp);
 
     if ($stmt->execute()) {
         $newId = $stmt->insert_id;
