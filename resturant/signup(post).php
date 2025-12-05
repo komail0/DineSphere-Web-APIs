@@ -5,6 +5,7 @@ header('Content-Type: application/json');
 
 $response = array();
 include 'conn.php';
+require_once 'upload_image.php';
 
 try {
     // Only allow POST
@@ -35,6 +36,7 @@ try {
     $email = isset($_POST['email']) ? trim($_POST['email']) : '';
     $phone = isset($_POST['phone']) ? trim($_POST['phone']) : '';
     $password = isset($_POST['password']) ? trim($_POST['password']) : '';
+    $base64Image = isset($_POST['base64_image']) ? $_POST['base64_image'] : '';
 
     // Validate required fields
     if (empty($businessName) || empty($nameCnic) || empty($lastName) || 
@@ -42,6 +44,15 @@ try {
         empty($email) || empty($phone) || empty($password)) {
         $response['success'] = false;
         $response['message'] = 'All required fields must be filled';
+        http_response_code(400);
+        echo json_encode($response);
+        exit;
+    }
+
+    // Validate restaurant image
+    if (empty($base64Image)) {
+        $response['success'] = false;
+        $response['message'] = 'Restaurant photo is required';
         http_response_code(400);
         echo json_encode($response);
         exit;
@@ -65,6 +76,27 @@ try {
         echo json_encode($response);
         exit;
     }
+
+    // Upload restaurant image to Cloudinary
+    $uploadResult = uploadBase64ImageToCloudinary($base64Image, 'dinesphere/restaurants');
+
+    if (!$uploadResult['success']) {
+        http_response_code(400);
+        $response['success'] = false;
+        $response['message'] = 'Image upload failed: ' . ($uploadResult['message'] ?? 'Unknown error');
+        echo json_encode($response);
+        exit;
+    }
+
+    if (empty($uploadResult['url'])) {
+        http_response_code(500);
+        $response['success'] = false;
+        $response['message'] = 'Upload succeeded but no URL returned';
+        echo json_encode($response);
+        exit;
+    }
+
+    $restaurantImageUrl = $uploadResult['url'];
 
     // Hash password
     $passwordHash = password_hash($password, PASSWORD_DEFAULT);
@@ -99,10 +131,10 @@ try {
     // Generate OTP
     $otp = rand(100000, 999999);
 
-    // Insert new restaurant (without restaurant_location)
+    // Insert new restaurant with image
     $insertSql = "INSERT INTO restaurant (business_name, name_per_cnic, last_name, business_type, 
-                  business_category, business_update, email, phone, password_hash, otp) 
-                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                  business_category, business_update, email, phone, password_hash, restaurant_image, otp) 
+                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
     
     $stmt = $conn->prepare($insertSql);
     
@@ -114,9 +146,9 @@ try {
         exit;
     }
 
-    $stmt->bind_param('sssssssssi', $businessName, $nameCnic, $lastName, 
+    $stmt->bind_param('ssssssssssi', $businessName, $nameCnic, $lastName, 
                      $businessType, $businessCategory, $businessUpdate, 
-                     $email, $phoneClean, $passwordHash, $otp);
+                     $email, $phoneClean, $passwordHash, $restaurantImageUrl, $otp);
 
     if ($stmt->execute()) {
         $newId = $stmt->insert_id;
@@ -126,6 +158,7 @@ try {
         $response['success'] = true;
         $response['message'] = 'Signup successful';
         $response['restaurant_id'] = $newId;
+        $response['restaurant_image'] = $restaurantImageUrl;
         $response['otp'] = $otp;
         http_response_code(201);
         echo json_encode($response);
