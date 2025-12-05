@@ -1,6 +1,8 @@
 <?php
-error_reporting(0);
-ini_set('display_errors', 0);
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+ini_set('log_errors', 1);
+ini_set('error_log', '/tmp/php-error.log');
 header('Content-Type: application/json');
 
 $response = array();
@@ -19,7 +21,7 @@ try {
     // Check database connection
     if (!isset($conn) || $conn->connect_error) {
         $response['success'] = false;
-        $response['message'] = 'Database connection failed';
+        $response['message'] = 'Database connection failed: ' . (isset($conn) ? $conn->connect_error : 'Connection object not set');
         http_response_code(500);
         echo json_encode($response);
         exit;
@@ -42,18 +44,28 @@ try {
     
     if (!$userStmt) {
         $response['success'] = false;
-        $response['message'] = 'Database error';
+        $response['message'] = 'Database error: ' . $conn->error;
         http_response_code(500);
         echo json_encode($response);
         exit;
     }
 
     $userStmt->bind_param('i', $userId);
-    $userStmt->execute();
+    
+    if (!$userStmt->execute()) {
+        $userStmt->close();
+        $response['success'] = false;
+        $response['message'] = 'Error executing user query: ' . $userStmt->error;
+        http_response_code(500);
+        echo json_encode($response);
+        exit;
+    }
+    
     $userResult = $userStmt->get_result();
 
     if ($userResult->num_rows === 0) {
         $userStmt->close();
+        $conn->close();
         $response['success'] = false;
         $response['message'] = 'User not found';
         http_response_code(404);
@@ -66,29 +78,40 @@ try {
     $userLng = floatval($userRow['longitude']);
     $userStmt->close();
 
-    // Get saved restaurants with proper NULL handling
+    // Get saved restaurants with image_url to match other API responses
     $sql = "SELECT r.restaurant_id, r.business_name, r.address, r.latitude, r.longitude, 
                    r.restaurant_image, r.discount, r.rating,
-                   COALESCE((6371 * acos(cos(radians(?)) * cos(radians(r.latitude)) * 
+                   (6371 * acos(cos(radians(?)) * cos(radians(r.latitude)) * 
                    cos(radians(r.longitude) - radians(?)) + 
-                   sin(radians(?)) * sin(radians(r.latitude)))), 0) AS distance_km
+                   sin(radians(?)) * sin(radians(r.latitude)))) AS distance_km
             FROM saved_restaurants sr
             INNER JOIN restaurants r ON sr.restaurant_id = r.restaurant_id
             WHERE sr.user_id = ?
-            ORDER BY sr.id DESC";
+            ORDER BY sr.saved_at DESC";
     
     $stmt = $conn->prepare($sql);
     
     if (!$stmt) {
+        $conn->close();
         $response['success'] = false;
-        $response['message'] = 'Database error';
+        $response['message'] = 'Database error: ' . $conn->error;
         http_response_code(500);
         echo json_encode($response);
         exit;
     }
 
     $stmt->bind_param('dddi', $userLat, $userLng, $userLat, $userId);
-    $stmt->execute();
+    
+    if (!$stmt->execute()) {
+        $stmt->close();
+        $conn->close();
+        $response['success'] = false;
+        $response['message'] = 'Error executing query: ' . $stmt->error;
+        http_response_code(500);
+        echo json_encode($response);
+        exit;
+    }
+    
     $result = $stmt->get_result();
 
     $restaurants = array();
@@ -100,7 +123,7 @@ try {
             'address' => $row['address'],
             'latitude' => floatval($row['latitude']),
             'longitude' => floatval($row['longitude']),
-            'restaurant_image' => $row['restaurant_image'],
+            'image_url' => $row['restaurant_image'],  // Renamed to match other APIs
             'discount' => $row['discount'],
             'rating' => floatval($row['rating']),
             'distance_km' => round(floatval($row['distance_km']), 2)
@@ -118,8 +141,12 @@ try {
     echo json_encode($response);
 
 } catch (Exception $e) {
+    if (isset($conn)) {
+        $conn->close();
+    }
     $response['success'] = false;
     $response['message'] = 'Server error: ' . $e->getMessage();
+    $response['trace'] = $e->getTraceAsString();
     http_response_code(500);
     echo json_encode($response);
 }
