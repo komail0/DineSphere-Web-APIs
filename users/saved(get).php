@@ -68,7 +68,7 @@ try {
 
     // Get saved restaurants
     $sql = "SELECT r.restaurant_id, r.business_name, r.address, r.latitude, r.longitude, 
-                   r.image_url, r.discount, r.rating,
+                   r.restaurant_image, r.discount, r.rating,
                    (6371 * acos(cos(radians(?)) * cos(radians(r.latitude)) * 
                    cos(radians(r.longitude) - radians(?)) + 
                    sin(radians(?)) * sin(radians(r.latitude)))) AS distance_km
@@ -100,7 +100,7 @@ try {
             'address' => $row['address'],
             'latitude' => floatval($row['latitude']),
             'longitude' => floatval($row['longitude']),
-            'image_url' => $row['image_url'],
+            'restaurant_image' => $row['restaurant_image'],
             'discount' => $row['discount'],
             'rating' => floatval($row['rating']),
             'distance_km' => round(floatval($row['distance_km']), 2)
