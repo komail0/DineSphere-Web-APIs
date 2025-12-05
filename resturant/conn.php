@@ -3,8 +3,8 @@
 // Database connection for production
 
 // DISABLE error display for production (prevents HTML output in JSON responses)
-error_reporting(0);
-ini_set('display_errors', 0);
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
 // Log errors to file instead
 ini_set('log_errors', 1);
 ini_set('error_log', __DIR__ . '/php_errors.log');
