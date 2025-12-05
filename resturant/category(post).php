@@ -106,7 +106,9 @@ try {
         $category_id = $stmt->insert_id;
         
         echo json_encode([
-            "status" => "success",
+            "success" => true,
+            "category_id" => $category_id,
+            "image_url" => $imageUrl,
             "message" => "Category added successfully",
             "data" => [
                 "category_id" => $category_id,
@@ -117,7 +119,7 @@ try {
         ]);
     } else {
         echo json_encode([
-            "status" => "error",
+            "success" => false,
             "message" => "Failed to add category: " . $stmt->error
         ]);
     }
