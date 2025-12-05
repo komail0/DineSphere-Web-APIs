@@ -30,7 +30,7 @@ try {
 }
 
 if (!$conn) {
-    echo json_encode(["status" => "error", "message" => "Database connection failed"]);
+    echo json_encode(["success" => false, "message" => "Database connection failed"]);
     exit();
 }
 
@@ -42,17 +42,17 @@ try {
 
     // Validate required fields
     if ($restaurant_id <= 0) {
-        echo json_encode(["status" => "error", "message" => "Valid restaurant_id is required"]);
+        echo json_encode(["success" => false, "message" => "Valid restaurant_id is required"]);
         exit();
     }
 
     if (empty($category_name)) {
-        echo json_encode(["status" => "error", "message" => "Category name is required"]);
+        echo json_encode(["success" => false, "message" => "Category name is required"]);
         exit();
     }
 
     if (empty($base64_image)) {
-        echo json_encode(["status" => "error", "message" => "Category image is required"]);
+        echo json_encode(["success" => false, "message" => "Category image is required"]);
         exit();
     }
 
@@ -65,7 +65,7 @@ try {
 
     if ($result->num_rows === 0) {
         $stmt->close();
-        echo json_encode(["status" => "error", "message" => "Restaurant not found"]);
+        echo json_encode(["success" => false, "message" => "Restaurant not found"]);
         exit();
     }
     $stmt->close();
@@ -76,7 +76,7 @@ try {
     if (!$uploadResult['success']) {
         http_response_code(400);
         echo json_encode([
-            "status" => "error", 
+            "success" => false,
             "message" => "Image upload failed: " . ($uploadResult['message'] ?? 'Unknown error'),
             "upload_result" => $uploadResult
         ]);
@@ -86,7 +86,7 @@ try {
     if (empty($uploadResult['url'])) {
         http_response_code(500);
         echo json_encode([
-            "status" => "error",
+            "success" => false,
             "message" => "Upload succeeded but no URL returned",
             "upload_result" => $uploadResult
         ]);
@@ -128,7 +128,7 @@ try {
     
 } catch (Exception $e) {
     echo json_encode([
-        "status" => "error",
+        "success" => false,
         "message" => "Exception: " . $e->getMessage(),
         "trace" => $e->getTraceAsString()
     ]);
