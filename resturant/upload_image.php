@@ -1,6 +1,7 @@
 <?php
 // Include Cloudinary SDK
-require_once __DIR__ . '/vendor/autoload.php';
+require_once __DIR__ . '/../vendor/autoload.php';
+
 use Cloudinary\Cloudinary;
 use Cloudinary\Api\Upload\UploadApi;
 
