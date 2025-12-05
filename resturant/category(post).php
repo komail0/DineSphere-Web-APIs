@@ -96,11 +96,11 @@ try {
     $imageUrl = $uploadResult['url'];
 
     // Insert category into database
-    $sql = "INSERT INTO category (category_name, category_image, restaurant_id) 
+    $sql = "INSERT INTO category (restaurant_id, category_name, category_image) 
             VALUES (?, ?, ?)";
 
     $stmt = $conn->prepare($sql);
-    $stmt->bind_param("ssi", $category_name, $imageUrl, $restaurant_id);
+    $stmt->bind_param("iss", $restaurant_id, $category_name, $imageUrl);
 
     if ($stmt->execute()) {
         $category_id = $stmt->insert_id;
