@@ -32,16 +32,3 @@ try {
     echo "\nError: " . $e->getMessage();
 }
 ?>
-```
-
-**Visit:** `https://dinesphere-web-apis-production.up.railway.app/resturant/test_cloudinary.php`
-
-This will show if the credentials are being read correctly.
-
----
-
-## Quick Fix: Verify No Special Characters
-
-Sometimes credentials get corrupted. Double-check your `api_secret`:
-```
-FI1zvDw2X7hjmPBobYwKzPzADR4
