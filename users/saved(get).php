@@ -79,13 +79,15 @@ try {
     $userStmt->close();
 
     // Get saved restaurants with image_url to match other API responses
+    // FIX 1: Change "saved_restaurant" to "saved_restaurants" (add 's')
+    // FIX 2: Change "restaurants" to "restaurant" (remove 's')
     $sql = "SELECT r.restaurant_id, r.business_name, r.address, r.latitude, r.longitude, 
                    r.restaurant_image, r.discount, r.rating,
                    (6371 * acos(cos(radians(?)) * cos(radians(r.latitude)) * 
                    cos(radians(r.longitude) - radians(?)) + 
                    sin(radians(?)) * sin(radians(r.latitude)))) AS distance_km
             FROM saved_restaurants sr
-            INNER JOIN restaurants r ON sr.restaurant_id = r.restaurant_id
+            INNER JOIN restaurant r ON sr.restaurant_id = r.restaurant_id
             WHERE sr.user_id = ?
             ORDER BY sr.saved_at DESC";
     
