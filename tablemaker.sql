@@ -1,1 +1,1 @@
-DESCRIBE notifications;
+DESCRIBE restaurant;

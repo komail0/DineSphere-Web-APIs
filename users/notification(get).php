@@ -1,6 +1,7 @@
 <?php
-error_reporting(0);
+error_reporting(E_ALL);
 ini_set('display_errors', 0);
+ini_set('log_errors', 1);
 header('Content-Type: application/json');
 
 $response = array();
@@ -37,6 +38,7 @@ try {
     }
 
     // Get notifications only from saved restaurants
+    // Join: notifications -> saved_restaurants (filtered by user_id) -> restaurants (for details)
     $sql = "SELECT 
                 n.notification_id,
                 n.restaurant_id,
@@ -44,7 +46,7 @@ try {
                 n.message,
                 n.created_at,
                 r.business_name,
-                r.image_url
+                r.restaurant_image
             FROM notifications n
             INNER JOIN saved_restaurants sr ON n.restaurant_id = sr.restaurant_id
             INNER JOIN restaurants r ON n.restaurant_id = r.restaurant_id
@@ -55,14 +57,22 @@ try {
     
     if (!$stmt) {
         $response['success'] = false;
-        $response['message'] = 'Database error';
+        $response['message'] = 'Database prepare error: ' . $conn->error;
         http_response_code(500);
         echo json_encode($response);
         exit;
     }
 
     $stmt->bind_param('s', $userId);
-    $stmt->execute();
+    
+    if (!$stmt->execute()) {
+        $response['success'] = false;
+        $response['message'] = 'Query execution error: ' . $stmt->error;
+        http_response_code(500);
+        echo json_encode($response);
+        exit;
+    }
+    
     $result = $stmt->get_result();
 
     $notifications = array();
@@ -75,7 +85,7 @@ try {
             'message' => $row['message'],
             'created_at' => $row['created_at'],
             'business_name' => $row['business_name'],
-            'image_url' => $row['image_url']
+            'restaurant_image' => $row['restaurant_image']
         );
     }
 
