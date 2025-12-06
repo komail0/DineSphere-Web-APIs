@@ -38,16 +38,16 @@ try {
     }
 
     // Get all restaurants with distance calculation
+    // UPDATED: Added 'phone' to the SELECT list
     $sql = "SELECT 
                 restaurant_id,
                 business_name,
                 address,
+                phone,
                 latitude,
                 longitude,
                 restaurant_image,
-                (6371 * acos(cos(radians(?)) * cos(radians(latitude)) * 
-                cos(radians(longitude) - radians(?)) + sin(radians(?)) * 
-                sin(radians(latitude)))) AS distance_km
+                (6371 * acos(cos(radians(?)) * cos(radians(latitude)) * cos(radians(longitude) - radians(?)) + sin(radians(?)) * sin(radians(latitude)))) AS distance_km
             FROM restaurant
             WHERE latitude IS NOT NULL 
                 AND longitude IS NOT NULL
@@ -74,6 +74,7 @@ try {
             'restaurant_id' => intval($row['restaurant_id']),
             'business_name' => $row['business_name'],
             'address' => $row['address'],
+            'phone' => $row['phone'], // UPDATED: Include phone number in response
             'latitude' => floatval($row['latitude']),
             'longitude' => floatval($row['longitude']),
             'distance_km' => round(floatval($row['distance_km']), 2),
