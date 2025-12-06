@@ -43,12 +43,16 @@ try {
 
     // Prepare SQL query
     if ($isEmail) {
-        $sql = "SELECT restaurant_id, business_name, name_per_cnic, last_name, email, phone, restaurant_image, password_hash 
+        $sql = "SELECT restaurant_id, business_name, name_per_cnic, last_name, business_type, 
+                       business_category, business_update, email, phone, password_hash, otp, 
+                       created_at, latitude, longitude, address, restaurant_image, discount, rating 
                 FROM restaurant 
                 WHERE email = ? 
                 LIMIT 1";
     } else {
-        $sql = "SELECT restaurant_id, business_name, name_per_cnic, last_name, email, phone, restaurant_image, password_hash 
+        $sql = "SELECT restaurant_id, business_name, name_per_cnic, last_name, business_type, 
+                       business_category, business_update, email, phone, password_hash, otp, 
+                       created_at, latitude, longitude, address, restaurant_image, discount, rating 
                 FROM restaurant 
                 WHERE business_name = ? 
                 LIMIT 1";
