@@ -49,7 +49,7 @@ try {
                     r.rating,
                     r.comment,
                     r.created_at,
-                    u.name as user_name
+                    CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, '')) as user_name
                 FROM reviews r
                 LEFT JOIN users u ON r.user_id = u.user_id
                 WHERE r.restaurant_id = ?
