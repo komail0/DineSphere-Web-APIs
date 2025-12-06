@@ -49,7 +49,7 @@ try {
                 r.restaurant_image
             FROM notifications n
             INNER JOIN saved_restaurants sr ON n.restaurant_id = sr.restaurant_id
-            INNER JOIN restaurants r ON n.restaurant_id = r.restaurant_id
+            INNER JOIN restaurant r ON n.restaurant_id = r.restaurant_id
             WHERE sr.user_id = ?
             ORDER BY n.created_at DESC";
     
