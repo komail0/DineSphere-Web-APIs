@@ -81,7 +81,7 @@ try {
             'longitude' => floatval($row['longitude']),
             'distance_km' => round(floatval($row['distance_km']), 2),
             'rating' => 4.0, // Default rating, you can add a rating column later
-            'discount' => null, // You can add discount logic later
+            'discount' => $row['discount'], // You can add discount logic later
             'image_url' => $row['restaurant_image'] ?? null // Cloudinary URL from database
         );
         $restaurants[] = $restaurant;

@@ -79,7 +79,7 @@ try {
             'longitude' => floatval($row['longitude']),
             'distance_km' => round(floatval($row['distance_km']), 2),
             'rating' => 4.0, // Default rating
-            'discount' => null, // Add discount logic later
+            'discount' => $row['discount'], // Add discount logic later
             'image_url' => $row['restaurant_image'] ?? null // Cloudinary URL from database
         );
         $restaurants[] = $restaurant;
