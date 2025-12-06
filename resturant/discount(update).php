@@ -63,11 +63,15 @@ try {
     $stmt->bind_param('si', $discount, $restaurantId);
 
     if ($stmt->execute()) {
+        // Store affected rows BEFORE closing the statement
         $affected = $stmt->affected_rows;
+        $error = $stmt->error;
+        
         $stmt->close();
         $conn->close();
 
-        if ($affected > 0 || $stmt->errno === 0) {
+        // Check if update was successful
+        if ($affected > 0 || empty($error)) {
             $response['success'] = true;
             $response['message'] = 'Discount updated successfully';
             $response['discount'] = $discount;
@@ -77,17 +81,28 @@ try {
             $response['message'] = 'Restaurant not found or no changes made';
             http_response_code(404);
         }
-        echo json_encode($response);
     } else {
+        // Store error before closing
+        $error = $stmt->error;
+        
         $stmt->close();
         $conn->close();
+        
         $response['success'] = false;
-        $response['message'] = 'Failed to update discount';
+        $response['message'] = 'Failed to update discount: ' . $error;
         http_response_code(500);
-        echo json_encode($response);
     }
+    
+    echo json_encode($response);
 
 } catch (Exception $e) {
+    if (isset($stmt) && $stmt) {
+        $stmt->close();
+    }
+    if (isset($conn) && $conn) {
+        $conn->close();
+    }
+    
     $response['success'] = false;
     $response['message'] = 'Server error: ' . $e->getMessage();
     http_response_code(500);
