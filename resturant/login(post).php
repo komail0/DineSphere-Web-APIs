@@ -7,6 +7,14 @@ $response = array();
 include 'conn.php';
 
 try {
+    // Only allow POST
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        $response['success'] = false;
+        $response['message'] = 'Method not allowed. Use POST.';
+        http_response_code(405);
+        echo json_encode($response);
+        exit;
+    }
 
     // Check database connection
     if (!isset($conn) || $conn->connect_error) {
@@ -35,16 +43,12 @@ try {
 
     // Prepare SQL query
     if ($isEmail) {
-        $sql = "SELECT restaurant_id, business_name, name_per_cnic, last_name, business_type, 
-                       business_category, business_update, email, phone, password_hash, 
-                       restaurant_location 
+        $sql = "SELECT restaurant_id, business_name, email, phone, restaurant_image, password_hash 
                 FROM restaurant 
                 WHERE email = ? 
                 LIMIT 1";
     } else {
-        $sql = "SELECT restaurant_id, business_name, name_per_cnic, last_name, business_type, 
-                       business_category, business_update, email, phone, password_hash, 
-                       restaurant_location 
+        $sql = "SELECT restaurant_id, business_name, email, phone, restaurant_image, password_hash 
                 FROM restaurant 
                 WHERE business_name = ? 
                 LIMIT 1";
