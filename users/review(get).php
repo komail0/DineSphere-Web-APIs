@@ -41,7 +41,7 @@ try {
                     rest.business_name,
                     rest.restaurant_image
                 FROM reviews r
-                INNER JOIN restaurants rest ON r.restaurant_id = rest.restaurant_id
+                INNER JOIN restaurant rest ON r.restaurant_id = rest.restaurant_id
                 WHERE r.user_id = ? AND r.restaurant_id = ?
                 LIMIT 1";
         
@@ -82,7 +82,7 @@ try {
                     rest.address,
                     rest.restaurant_image
                 FROM reviews r
-                INNER JOIN restaurants rest ON r.restaurant_id = rest.restaurant_id
+                INNER JOIN restaurant rest ON r.restaurant_id = rest.restaurant_id
                 WHERE r.user_id = ?
                 ORDER BY r.created_at DESC";
         
