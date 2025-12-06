@@ -86,6 +86,29 @@ try {
     }
 
     $checkStmt->close();
+
+    // ADDED: Calculate and update overall rating in restaurant table
+    $avgSql = "SELECT AVG(rating) as avg_rating FROM reviews WHERE restaurant_id = ?";
+    $avgStmt = $conn->prepare($avgSql);
+    $avgStmt->bind_param('i', $restaurantId);
+    $avgStmt->execute();
+    $avgResult = $avgStmt->get_result();
+    
+    if ($avgResult->num_rows > 0) {
+        $avgRow = $avgResult->fetch_assoc();
+        $avgRating = round($avgRow['avg_rating'], 2); // Round to 2 decimal places
+        
+        // Update restaurant table with new average rating
+        $updateRestaurantSql = "UPDATE restaurant SET rating = ? WHERE restaurant_id = ?";
+        $updateRestaurantStmt = $conn->prepare($updateRestaurantSql);
+        $updateRestaurantStmt->bind_param('di', $avgRating, $restaurantId);
+        $updateRestaurantStmt->execute();
+        $updateRestaurantStmt->close();
+        
+        $response['avg_rating'] = $avgRating;
+    }
+    
+    $avgStmt->close();
     $conn->close();
     
     http_response_code(200);
