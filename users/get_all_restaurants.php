@@ -37,8 +37,7 @@ try {
         exit;
     }
 
-    // Get all restaurants with distance calculation
-    // UPDATED: Added 'phone' to the SELECT list
+    // Get all restaurants with distance calculation and discount
     $sql = "SELECT 
                 restaurant_id,
                 business_name,
@@ -47,6 +46,8 @@ try {
                 latitude,
                 longitude,
                 restaurant_image,
+                discount,
+                rating,
                 (6371 * acos(cos(radians(?)) * cos(radians(latitude)) * cos(radians(longitude) - radians(?)) + sin(radians(?)) * sin(radians(latitude)))) AS distance_km
             FROM restaurant
             WHERE latitude IS NOT NULL 
@@ -74,13 +75,13 @@ try {
             'restaurant_id' => intval($row['restaurant_id']),
             'business_name' => $row['business_name'],
             'address' => $row['address'],
-            'phone' => $row['phone'], // UPDATED: Include phone number in response
+            'phone' => $row['phone'],
             'latitude' => floatval($row['latitude']),
             'longitude' => floatval($row['longitude']),
             'distance_km' => round(floatval($row['distance_km']), 2),
-            'rating' => 4.0, // Default rating
-            'discount' => $row['discount'], // Add discount logic later
-            'image_url' => $row['restaurant_image'] ?? null // Cloudinary URL from database
+            'rating' => floatval($row['rating'] ?? 4.0),
+            'discount' => $row['discount'],
+            'image_url' => $row['restaurant_image'] ?? null
         );
         $restaurants[] = $restaurant;
     }
