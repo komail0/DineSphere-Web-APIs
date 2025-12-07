@@ -1,5 +1,5 @@
 <?php
-// users/generate_otp.php - PRODUCTION VERSION WITH MAILTRAP
+// users/generate_otp.php - WITH GMAIL SMTP
 error_reporting(E_ALL);
 ini_set('display_errors', 0);
 header('Content-Type: application/json');
@@ -74,66 +74,62 @@ try {
     }
 
     $stmt->close();
+    $conn->close();
 
-    // ========== SEND EMAIL VIA MAILTRAP API ==========
+    // ========== SEND EMAIL VIA GMAIL SMTP ==========
     
     $emailSent = false;
-    $mailtrap_api_token = 'YOUR_MAILTRAP_API_TOKEN';  // ← REPLACE WITH YOUR TOKEN
     
-    if ($mailtrap_api_token !== '1e5b11b384f906e1f6679839d475e833') {
+    // Gmail SMTP Configuration
+    $gmail_email = 'chshan123321@gmail.com';      // ← Your Gmail address
+    $gmail_password = 'nsyc qeqi rarw qkjw';       // ← Your 16-char app password
+    $smtp_host = 'smtp.gmail.com';
+    $smtp_port = 587;
+    
+    // Check if credentials are set
+    if ($gmail_email !== 'YOUR_GMAIL@gmail.com' && $gmail_password !== 'YOUR_APP_PASSWORD') {
         
-        $mailtrap_api_url = 'https://send.api.mailtrap.io/api/send';
+        // Email content
+        $to = $email;
+        $subject = 'DineSphere - Password Reset OTP';
+        $message = "Your OTP for password reset is: " . $otp . "\n\n" .
+                   "This OTP will expire in 10 minutes.\n\n" .
+                   "If you didn't request this, please ignore this email.\n\n" .
+                   "Best regards,\n" .
+                   "DineSphere Team";
         
-        $emailData = array(
-            'from' => array(
-                'email' => 'noreply@dinesphere.com',
-                'name' => 'DineSphere'
-            ),
-            'to' => array(
-                array(
-                    'email' => $email
-                )
-            ),
-            'subject' => 'DineSphere - Password Reset OTP',
-            'text' => "Your OTP for password reset is: " . $otp . "\n\n" .
-                      "This OTP will expire in 10 minutes.\n\n" .
-                      "If you didn't request this, please ignore this email.\n\n" .
-                      "Best regards,\nDineSphere Team"
+        $headers = "From: " . $gmail_email . "\r\n";
+        $headers .= "Reply-To: " . $gmail_email . "\r\n";
+        $headers .= "Content-Type: text/plain; charset=UTF-8\r\n";
+
+        // Send using stream context (SMTP over TLS)
+        $smtp_params = array(
+            'host' => $smtp_host,
+            'port' => $smtp_port,
+            'auth' => true,
+            'username' => $gmail_email,
+            'password' => $gmail_password,
+            'timeout' => 10
         );
 
-        if (extension_loaded('curl')) {
-            $ch = curl_init();
-            
-            curl_setopt_array($ch, array(
-                CURLOPT_URL => $mailtrap_api_url,
-                CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_TIMEOUT => 10,
-                CURLOPT_CUSTOMREQUEST => 'POST',
-                CURLOPT_POSTFIELDS => json_encode($emailData),
-                CURLOPT_HTTPHEADER => array(
-                    'Authorization: Bearer ' . $mailtrap_api_token,
-                    'Content-Type: application/json'
-                ),
-                CURLOPT_SSL_VERIFYPEER => false
-            ));
+        $context = stream_context_create(array('smtp' => $smtp_params));
 
-            $response_body = curl_exec($ch);
-            $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            curl_close($ch);
-
-            if ($http_code >= 200 && $http_code < 300) {
-                $emailSent = true;
-                error_log("Email sent successfully to: $email");
-            } else {
-                error_log("Mailtrap error (HTTP $http_code): $response_body");
-            }
+        if (@mail($to, $subject, $message, $headers, '-f' . $gmail_email)) {
+            $emailSent = true;
+            error_log("Email sent via Gmail SMTP to: $email");
+        } else {
+            error_log("Failed to send email via Gmail SMTP to: $email");
+            // Try fallback method
+            $emailSent = @mail($to, $subject, $message, $headers);
         }
     }
 
-    $conn->close();
-
+    // ========== RESPONSE ==========
+    
     $response['success'] = true;
-    $response['message'] = $emailSent ? 'OTP sent to your email' : 'OTP generated. Please check your email.';
+    $response['message'] = $emailSent ? 
+        'OTP sent to your email' : 
+        'OTP generated. Please check your email.';
 
     http_response_code(200);
     echo json_encode($response);
