@@ -1,5 +1,5 @@
 <?php
-// users/generate_otp.php - WITH GMAIL SMTP
+// users/generate_otp.php - SIMPLE VERSION (No Email)
 error_reporting(E_ALL);
 ini_set('display_errors', 0);
 header('Content-Type: application/json');
@@ -76,60 +76,10 @@ try {
     $stmt->close();
     $conn->close();
 
-    // ========== SEND EMAIL VIA GMAIL SMTP ==========
-    
-    $emailSent = false;
-    
-    // Gmail SMTP Configuration
-    $gmail_email = 'chshan123321@gmail.com';      // ← Your Gmail address
-    $gmail_password = 'nsyc qeqi rarw qkjw';       // ← Your 16-char app password
-    $smtp_host = 'smtp.gmail.com';
-    $smtp_port = 587;
-    
-    // Check if credentials are set
-    if ($gmail_email !== 'YOUR_GMAIL@gmail.com' && $gmail_password !== 'YOUR_APP_PASSWORD') {
-        
-        // Email content
-        $to = $email;
-        $subject = 'DineSphere - Password Reset OTP';
-        $message = "Your OTP for password reset is: " . $otp . "\n\n" .
-                   "This OTP will expire in 10 minutes.\n\n" .
-                   "If you didn't request this, please ignore this email.\n\n" .
-                   "Best regards,\n" .
-                   "DineSphere Team";
-        
-        $headers = "From: " . $gmail_email . "\r\n";
-        $headers .= "Reply-To: " . $gmail_email . "\r\n";
-        $headers .= "Content-Type: text/plain; charset=UTF-8\r\n";
-
-        // Send using stream context (SMTP over TLS)
-        $smtp_params = array(
-            'host' => $smtp_host,
-            'port' => $smtp_port,
-            'auth' => true,
-            'username' => $gmail_email,
-            'password' => $gmail_password,
-            'timeout' => 10
-        );
-
-        $context = stream_context_create(array('smtp' => $smtp_params));
-
-        if (@mail($to, $subject, $message, $headers, '-f' . $gmail_email)) {
-            $emailSent = true;
-            error_log("Email sent via Gmail SMTP to: $email");
-        } else {
-            error_log("Failed to send email via Gmail SMTP to: $email");
-            // Try fallback method
-            $emailSent = @mail($to, $subject, $message, $headers);
-        }
-    }
-
-    // ========== RESPONSE ==========
-    
+    // Return OTP for display on app
     $response['success'] = true;
-    $response['message'] = $emailSent ? 
-        'OTP sent to your email' : 
-        'OTP generated. Please check your email.';
+    $response['message'] = 'OTP generated successfully';
+    $response['otp'] = $otp;
 
     http_response_code(200);
     echo json_encode($response);
