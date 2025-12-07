@@ -25,8 +25,6 @@ try {
         throw new Exception('Invalid email format');
     }
 
-    error_log("OTP Generation - Email: $email");
-
     // Check if email exists in users table
     $checkSql = "SELECT user_id FROM users WHERE email = ? LIMIT 1";
     $stmt = $conn->prepare($checkSql);
@@ -40,7 +38,6 @@ try {
     $result = $stmt->get_result();
 
     if ($result->num_rows === 0) {
-        error_log("Email not found: $email");
         throw new Exception('Email not found in our records');
     }
 
@@ -48,7 +45,6 @@ try {
 
     // Generate 6-digit OTP
     $otp = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-    error_log("Generated OTP: $otp for email: $email");
 
     // Hash OTP before storing
     $otpHash = hash('sha256', $otp);
@@ -74,7 +70,6 @@ try {
     $stmt->bind_param('ssss', $email, $otp, $otpHash, $expiresAt);
 
     if (!$stmt->execute()) {
-        error_log("Failed to insert OTP: " . $stmt->error);
         throw new Exception('Failed to generate OTP');
     }
 
@@ -83,91 +78,67 @@ try {
     // ========== SEND EMAIL VIA MAILTRAP API ==========
     
     $emailSent = false;
-    $emailError = '';
-
-    // Mailtrap API Configuration
-    $mailtrap_api_url = 'https://send.api.mailtrap.io/api/send';
-    $mailtrap_api_token = '1e5b11b384f906e1f6679839d475e833';  // ← REPLACE WITH YOUR TOKEN
+    $mailtrap_api_token = 'YOUR_MAILTRAP_API_TOKEN';  // ← REPLACE WITH YOUR TOKEN
     
-    // Prepare email data
-    $emailData = array(
-        'from' => array(
-            'email' => 'noreply@dinesphere.com',
-            'name' => 'DineSphere'
-        ),
-        'to' => array(
-            array(
-                'email' => $email,
-                'name' => 'DineSphere User'
-            )
-        ),
-        'subject' => 'DineSphere - Password Reset OTP',
-        'text' => "Your OTP for password reset is: " . $otp . "\n\n" .
-                  "This OTP will expire in 10 minutes.\n\n" .
-                  "If you didn't request this, please ignore this email.\n\n" .
-                  "Best regards,\n" .
-                  "DineSphere Team"
-    );
-
-    // Send via Mailtrap API using cURL
-    if (extension_loaded('curl')) {
-        $ch = curl_init();
+    if ($mailtrap_api_token !== '1e5b11b384f906e1f6679839d475e833') {
         
-        curl_setopt_array($ch, array(
-            CURLOPT_URL => $mailtrap_api_url,
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_ENCODING => '',
-            CURLOPT_MAXREDIRS => 10,
-            CURLOPT_TIMEOUT => 0,
-            CURLOPT_FOLLOWLOCATION => true,
-            CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-            CURLOPT_CUSTOMREQUEST => 'POST',
-            CURLOPT_POSTFIELDS => json_encode($emailData),
-            CURLOPT_HTTPHEADER => array(
-                'Authorization: Bearer ' . $mailtrap_api_token,
-                'Content-Type: application/json',
-                'Accept: application/json'
+        $mailtrap_api_url = 'https://send.api.mailtrap.io/api/send';
+        
+        $emailData = array(
+            'from' => array(
+                'email' => 'noreply@dinesphere.com',
+                'name' => 'DineSphere'
             ),
-            CURLOPT_SSL_VERIFYPEER => true,
-            CURLOPT_SSL_VERIFYHOST => 2
-        ));
+            'to' => array(
+                array(
+                    'email' => $email
+                )
+            ),
+            'subject' => 'DineSphere - Password Reset OTP',
+            'text' => "Your OTP for password reset is: " . $otp . "\n\n" .
+                      "This OTP will expire in 10 minutes.\n\n" .
+                      "If you didn't request this, please ignore this email.\n\n" .
+                      "Best regards,\nDineSphere Team"
+        );
 
-        $response_body = curl_exec($ch);
-        $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $curl_error = curl_error($ch);
-        curl_close($ch);
+        if (extension_loaded('curl')) {
+            $ch = curl_init();
+            
+            curl_setopt_array($ch, array(
+                CURLOPT_URL => $mailtrap_api_url,
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_TIMEOUT => 10,
+                CURLOPT_CUSTOMREQUEST => 'POST',
+                CURLOPT_POSTFIELDS => json_encode($emailData),
+                CURLOPT_HTTPHEADER => array(
+                    'Authorization: Bearer ' . $mailtrap_api_token,
+                    'Content-Type: application/json'
+                ),
+                CURLOPT_SSL_VERIFYPEER => false
+            ));
 
-        if ($http_code >= 200 && $http_code < 300) {
-            $emailSent = true;
-            error_log("Email sent successfully via Mailtrap to: $email (HTTP: $http_code)");
-        } else {
-            $emailError = "Mailtrap Error (HTTP $http_code): $response_body";
-            error_log($emailError);
+            $response_body = curl_exec($ch);
+            $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+
+            if ($http_code >= 200 && $http_code < 300) {
+                $emailSent = true;
+                error_log("Email sent successfully to: $email");
+            } else {
+                error_log("Mailtrap error (HTTP $http_code): $response_body");
+            }
         }
-    } else {
-        $emailError = "cURL extension not available";
-        error_log($emailError);
     }
 
-    // ========== RESPONSE ==========
-    
     $conn->close();
 
-    if ($emailSent) {
-        $response['success'] = true;
-        $response['message'] = 'OTP sent to your email successfully';
-    } else {
-        // OTP is still in database, but email failed
-        $response['success'] = true;
-        $response['message'] = 'OTP generated (Email may be delayed). Check your email in a few moments.';
-        error_log("Warning: OTP generated but email sending failed: $emailError");
-    }
+    $response['success'] = true;
+    $response['message'] = $emailSent ? 'OTP sent to your email' : 'OTP generated. Please check your email.';
 
     http_response_code(200);
     echo json_encode($response);
 
 } catch (Exception $e) {
-    error_log("OTP Generation Error: " . $e->getMessage());
     $response['success'] = false;
     $response['message'] = $e->getMessage();
     http_response_code(400);
