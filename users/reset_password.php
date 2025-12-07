@@ -31,7 +31,7 @@ if ($check_result->num_rows === 0) {
 $check_stmt->close();
 
 // Now update the password
-$stmt = $conn->prepare("UPDATE users SET password = ? WHERE user_id = ?");
+$stmt = $conn->prepare("UPDATE users SET password_hash = ? WHERE user_id = ?");
 $stmt->bind_param("ss", $hashed_password, $user_id);
 
 if ($stmt->execute() && $stmt->affected_rows > 0) {
