@@ -13,8 +13,8 @@ if (empty($user_id) || empty($new_password)) {
 // Hash the password
 $hashed_password = password_hash($new_password, PASSWORD_DEFAULT);
 
-$stmt = $conn->prepare("UPDATE users SET password = ? WHERE id = ?");
-$stmt->bind_param("si", $hashed_password, $user_id);
+$stmt = $conn->prepare("UPDATE users SET password = ? WHERE user_id = ?");
+$stmt->bind_param("ss", $hashed_password, $user_id);
 
 if ($stmt->execute() && $stmt->affected_rows > 0) {
     echo json_encode(['success' => true, 'message' => 'Password updated successfully']);
