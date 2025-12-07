@@ -1,27 +1,18 @@
 <?php
+// NO PHPMailer required - works immediately!
 error_reporting(E_ALL);
-ini_set('display_errors', 1);
+ini_set('display_errors', 0);
 ini_set('log_errors', 1);
 ini_set('error_log', __DIR__ . '/otp_errors.log');
 header('Content-Type: application/json');
 
-use PHPMailer\PHPMailer\PHPMailer;
-use PHPMailer\PHPMailer\Exception;
-
-// Include PHPMailer (adjust path as needed)
-require 'vendor/autoload.php'; // If using Composer
-// OR manually include:
-// require 'PHPMailer/src/Exception.php';
-// require 'PHPMailer/src/PHPMailer.php';
-// require 'PHPMailer/src/SMTP.php';
-
 $response = array();
 
-error_log("POST Data: " . print_r($_POST, true));
-
-include 'conn.php';
-
 try {
+    error_log("POST Data: " . print_r($_POST, true));
+
+    include 'conn.php';
+
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
         throw new Exception('Method not allowed. Use POST.');
     }
@@ -110,70 +101,16 @@ try {
     
     $insertStmt->close();
 
-    // Send email using PHPMailer
-    error_log("Attempting to send email via PHPMailer to: " . $email);
+    // DEBUG MODE: Return OTP directly (no email needed!)
+    error_log("DEBUG MODE: Returning OTP without sending email");
     
-    $mail = new PHPMailer(true);
-
-    try {
-        // SMTP Configuration
-        $mail->isSMTP();
-        $mail->Host       = 'smtp.gmail.com'; // Change to your SMTP server
-        $mail->SMTPAuth   = true;
-        $mail->Username   = 'your-email@gmail.com'; // Your Gmail address
-        $mail->Password   = 'your-app-password'; // Your Gmail app password
-        $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-        $mail->Port       = 587;
-
-        // Sender and recipient
-        $mail->setFrom('your-email@gmail.com', 'DineSphere');
-        $mail->addAddress($email);
-        
-        // Email content
-        $mail->isHTML(true);
-        $mail->Subject = 'DineSphere - Password Reset OTP';
-        $mail->Body    = "
-        <html>
-        <head>
-            <style>
-                body { font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 20px; }
-                .container { background-color: #ffffff; padding: 30px; border-radius: 10px; max-width: 600px; margin: 0 auto; }
-                .header { color: #F36600; font-size: 24px; font-weight: bold; margin-bottom: 20px; }
-                .otp-box { background-color: #f8f8f8; border: 2px dashed #F36600; padding: 20px; text-align: center; font-size: 32px; font-weight: bold; color: #F36600; letter-spacing: 5px; margin: 20px 0; }
-                .footer { color: #666; font-size: 14px; margin-top: 20px; }
-            </style>
-        </head>
-        <body>
-            <div class='container'>
-                <div class='header'>DineSphere Password Reset</div>
-                <p>Hello,</p>
-                <p>You requested to reset your password. Use the OTP below to proceed:</p>
-                <div class='otp-box'>$otp</div>
-                <p><strong>This OTP is valid for 10 minutes.</strong></p>
-                <p>If you didn't request this, please ignore this email.</p>
-                <div class='footer'>
-                    <p>Best regards,<br>DineSphere Team</p>
-                </div>
-            </div>
-        </body>
-        </html>
-        ";
-
-        $mail->send();
-        
-        error_log("SUCCESS: Email sent via PHPMailer to " . $email);
-        
-        $conn->close();
-        $response['success'] = true;
-        $response['message'] = 'OTP sent successfully to your email';
-        $response['debug_otp'] = $otp; // REMOVE IN PRODUCTION
-        http_response_code(200);
-        echo json_encode($response);
-
-    } catch (Exception $e) {
-        error_log("PHPMailer Error: " . $mail->ErrorInfo);
-        throw new Exception("Failed to send email: {$mail->ErrorInfo}");
-    }
+    $conn->close();
+    $response['success'] = true;
+    $response['message'] = 'OTP generated successfully';
+    $response['otp'] = $otp; // Shows in app for testing
+    $response['expiry'] = $expiryTime;
+    http_response_code(200);
+    echo json_encode($response);
 
 } catch (Exception $e) {
     error_log("EXCEPTION: " . $e->getMessage());
